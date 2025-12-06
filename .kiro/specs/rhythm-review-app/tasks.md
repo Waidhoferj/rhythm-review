@@ -106,14 +106,14 @@
     - _Requirements: 2.6_
 
 - [ ] 7. Implement practice set management
-  - [ ] 7.1 Create new practice set page (`src/routes/(app)/practice-sets/new/+page.svelte`)
+  - [x] 7.1 Create new practice set page (`src/routes/(app)/practice-sets/new/+page.svelte`)
     - Build form with name, description, icon selector, and tags input
     - Implement multi-select for moves and patterns
     - Display selected items visually
     - Create form action for practice set creation
     - _Requirements: 3.1, 3.2, 3.3_
   
-  - [ ] 7.2 Create practice set detail page (`src/routes/(app)/practice-sets/[id]/+page.svelte` and `+page.server.ts`)
+  - [x] 7.2 Create practice set detail page (`src/routes/(app)/practice-sets/[id]/+page.svelte` and `+page.server.ts`)
     - Implement server load function to fetch practice set with all items
     - Display practice set metadata (name, description, tags, icon)
     - Show list of included moves and patterns
