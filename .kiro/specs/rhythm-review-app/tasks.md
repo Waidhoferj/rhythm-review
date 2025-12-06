@@ -84,8 +84,8 @@
     - Redirect to detail page on success
     - _Requirements: 1.4, 1.5_
 
-- [ ] 6. Implement pattern management
-  - [ ] 6.1 Create new pattern page (`src/routes/(app)/patterns/new/+page.svelte`)
+- [x] 6. Implement pattern management
+  - [x] 6.1 Create new pattern page (`src/routes/(app)/patterns/new/+page.svelte`)
     - Build form with name and description fields
     - Implement move selector with search/filter from user's moves
     - Add drag-and-drop functionality for move reordering
@@ -93,13 +93,13 @@
     - Create form action for pattern creation with move sequence
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
   
-  - [ ] 6.2 Create pattern detail page (`src/routes/(app)/patterns/[id]/+page.svelte` and `+page.server.ts`)
+  - [x] 6.2 Create pattern detail page (`src/routes/(app)/patterns/[id]/+page.svelte` and `+page.server.ts`)
     - Implement server load function to fetch pattern with moves
     - Display pattern details and ordered move list
     - Add edit button and delete action
     - _Requirements: 2.5_
   
-  - [ ] 6.3 Create pattern edit page (`src/routes/(app)/patterns/[id]/edit/+page.svelte`)
+  - [x] 6.3 Create pattern edit page (`src/routes/(app)/patterns/[id]/edit/+page.svelte`)
     - Pre-populate form with existing pattern data and move sequence
     - Allow modification of move sequence with drag-and-drop
     - Implement update form action
