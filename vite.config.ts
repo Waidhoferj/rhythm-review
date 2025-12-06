@@ -14,6 +14,12 @@ export default defineConfig({
 			compiler: 'svelte'
 		})
 	],
+	ssr: {
+		noExternal: ['@stackframe/js', '@stackframe/stack-shared']
+	},
+	optimizeDeps: {
+		include: ['@stackframe/js']
+	},
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

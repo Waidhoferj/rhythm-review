@@ -1,6 +1,6 @@
 # Rhythm Review
 
-A dance practice app that helps dancers track, organize, and practice their moves using spaced repetition learning.
+A dance practice app that helps dancers track, organize, and practice their moves.
 
 ## Overview
 
