@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp, boolean, real } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, text, timestamp } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Dance Moves Table
@@ -56,45 +56,6 @@ export const practiceSetItems = pgTable('practice_set_items', {
 	itemId: integer('item_id').notNull() // references either moves.id or patterns.id
 });
 
-// Practice Sessions Table
-export const practiceSessions = pgTable('practice_sessions', {
-	id: serial('id').primaryKey(),
-	userId: text('user_id').notNull(),
-	practiceSetId: integer('practice_set_id')
-		.notNull()
-		.references(() => practiceSets.id),
-	startTime: timestamp('start_time').notNull(),
-	endTime: timestamp('end_time'),
-	duration: integer('duration'), // in seconds
-	notes: text('notes'),
-	createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// Practice Executions Table (individual move/pattern attempts)
-export const practiceExecutions = pgTable('practice_executions', {
-	id: serial('id').primaryKey(),
-	sessionId: integer('session_id')
-		.notNull()
-		.references(() => practiceSessions.id, { onDelete: 'cascade' }),
-	itemType: text('item_type').notNull(), // 'move' or 'pattern'
-	itemId: integer('item_id').notNull(),
-	success: boolean('success').notNull(),
-	timestamp: timestamp('timestamp').notNull(),
-	createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// SM-2 Performance Tracking Table
-export const sm2Performance = pgTable('sm2_performance', {
-	id: serial('id').primaryKey(),
-	userId: text('user_id').notNull(),
-	itemType: text('item_type').notNull(),
-	itemId: integer('item_id').notNull(),
-	easinessFactor: real('easiness_factor').notNull().default(2.5),
-	repetitions: integer('repetitions').notNull().default(0),
-	interval: integer('interval').notNull().default(0),
-	nextReviewDate: timestamp('next_review_date').notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().notNull()
-});
 
 // Define relations for proper joins
 export const movesRelations = relations(moves, ({ many }) => ({
@@ -116,29 +77,10 @@ export const patternMovesRelations = relations(patternMoves, ({ one }) => ({
 	})
 }));
 
-export const practiceSetsRelations = relations(practiceSets, ({ many }) => ({
-	items: many(practiceSetItems),
-	sessions: many(practiceSessions)
-}));
 
 export const practiceSetItemsRelations = relations(practiceSetItems, ({ one }) => ({
 	practiceSet: one(practiceSets, {
 		fields: [practiceSetItems.practiceSetId],
 		references: [practiceSets.id]
-	})
-}));
-
-export const practiceSessionsRelations = relations(practiceSessions, ({ one, many }) => ({
-	practiceSet: one(practiceSets, {
-		fields: [practiceSessions.practiceSetId],
-		references: [practiceSets.id]
-	}),
-	executions: many(practiceExecutions)
-}));
-
-export const practiceExecutionsRelations = relations(practiceExecutions, ({ one }) => ({
-	session: one(practiceSessions, {
-		fields: [practiceExecutions.sessionId],
-		references: [practiceSessions.id]
 	})
 }));

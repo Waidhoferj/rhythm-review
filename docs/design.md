@@ -2,9 +2,9 @@
 
 ## Overview
 
-Rhythm Review is a SvelteKit-based progressive web application that helps dancers practice and improve their skills through spaced repetition learning. The application uses a modern tech stack including SvelteKit 2, Drizzle ORM with Neon PostgreSQL, Stack Auth for authentication, TailwindCSS 4 with DaisyUI for styling, and implements the SM-2 spaced repetition algorithm for intelligent practice suggestions.
+Rhythm Review is a SvelteKit-based progressive web application that helps dancers practice and improve their skills through structured practice sessions. The application uses a modern tech stack including SvelteKit 2, Drizzle ORM with Neon PostgreSQL, Stack Auth for authentication, and TailwindCSS 4 with DaisyUI for styling.
 
-The application follows a component-based architecture with clear separation between client and server logic, utilizing SvelteKit's server-side rendering capabilities and form actions for data mutations.
+The application follows a component-based architecture with clear separation between client and server logic, utilizing SvelteKit's server-side rendering capabilities and form actions for data mutations. Practice sessions are handled entirely on the frontend—only moves, patterns, and practice sets are persisted to the database.
 
 ## Architecture
 
@@ -31,12 +31,11 @@ src/
 │   │   │   ├── PatternForm/
 │   │   │   ├── PracticeSetForm/
 │   │   │   ├── PracticeView/
-│   │   │   ├── PracticeLog/
 │   │   │   └── Profile/
 │   │   ├── stores/
 │   │   │   └── practice-session.svelte.ts
 │   │   └── utils/
-│   │       └── sm2-algorithm.ts
+│   │       └── practice-queue.ts
 │   ├── server/
 │   │   ├── db/
 │   │   │   ├── index.ts
@@ -44,9 +43,7 @@ src/
 │   │   ├── services/
 │   │   │   ├── moves.ts
 │   │   │   ├── patterns.ts
-│   │   │   ├── practice-sets.ts
-│   │   │   ├── practice-sessions.ts
-│   │   │   └── sm2-service.ts
+│   │   │   └── practice-sets.ts
 │   │   └── auth.ts
 │   └── types/
 │       └── index.ts
@@ -78,10 +75,6 @@ src/
     │   │       ├── +page.server.ts
     │   │       └── practice/
     │   │           └── +page.svelte
-    │   ├── logs/
-    │   │   ├── +page.svelte
-    │   │   └── [id]/
-    │   │       └── +page.svelte
     │   └── profile/
     │       └── +page.svelte
     └── auth/ (existing)
@@ -94,6 +87,8 @@ All routes under `(app)/` will be protected using a `+layout.server.ts` that che
 ## Components and Interfaces
 
 ### Database Schema
+
+The database only persists moves, patterns, and practice sets. Practice sessions are handled entirely on the frontend and are not stored server-side.
 
 ```typescript
 // Dance Moves Table
@@ -144,47 +139,6 @@ export const practiceSetItems = pgTable('practice_set_items', {
   itemType: text('item_type').notNull(), // 'move' or 'pattern'
   itemId: integer('item_id').notNull() // references either moves.id or patterns.id
 });
-
-// Practice Sessions Table
-export const practiceSessions = pgTable('practice_sessions', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  practiceSetId: integer('practice_set_id').notNull().references(() => practiceSets.id),
-  startTime: timestamp('start_time').notNull(),
-  endTime: timestamp('end_time'),
-  duration: integer('duration'), // in seconds
-  notes: text('notes'),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// Practice Executions Table (individual move/pattern attempts)
-export const practiceExecutions = pgTable('practice_executions', {
-  id: serial('id').primaryKey(),
-  sessionId: integer('session_id').notNull().references(() => practiceSessions.id, { onDelete: 'cascade' }),
-  itemType: text('item_type').notNull(), // 'move' or 'pattern'
-  itemId: integer('item_id').notNull(),
-  success: boolean('success').notNull(),
-  timestamp: timestamp('timestamp').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// SM-2 Performance Tracking Table
-export const sm2Performance = pgTable('sm2_performance', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  itemType: text('item_type').notNull(),
-  itemId: integer('item_id').notNull(),
-  easinessFactor: real('easiness_factor').notNull().default(2.5),
-  repetitions: integer('repetitions').notNull().default(0),
-  interval: integer('interval').notNull().default(0),
-  nextReviewDate: timestamp('next_review_date').notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
-});
-
-// Composite unique constraint for SM-2 tracking
-export const sm2PerformanceRelations = relations(sm2Performance, ({ one }) => ({
-  // Unique per user, item type, and item ID
-}));
 ```
 
 ### TypeScript Interfaces
@@ -239,142 +193,23 @@ export interface PracticeSetItem {
   item: DanceMove | Pattern;
 }
 
-export interface PracticeSession {
-  id: number;
-  userId: string;
-  practiceSetId: number;
-  practiceSet: PracticeSet;
-  startTime: Date;
-  endTime?: Date;
-  duration?: number;
-  notes?: string;
-  executions: PracticeExecution[];
-  createdAt: Date;
-}
-
-export interface PracticeExecution {
-  id: number;
-  sessionId: number;
+// Frontend-only practice session types
+export interface PracticeQueueItem {
   itemType: 'move' | 'pattern';
   itemId: number;
-  success: boolean;
-  timestamp: Date;
   item: DanceMove | Pattern;
-}
-
-export interface SM2PerformanceData {
-  id: number;
-  userId: string;
-  itemType: 'move' | 'pattern';
-  itemId: number;
-  easinessFactor: number;
-  repetitions: number;
-  interval: number;
-  nextReviewDate: Date;
-  updatedAt: Date;
-}
-
-// Practice Session Statistics
-export interface SessionStatistics {
-  duration: number;
-  totalExecutions: number;
-  successfulExecutions: number;
-  successRate: number;
-  bestMoves: Array<{ item: DanceMove | Pattern; successRate: number }>;
-  worstMoves: Array<{ item: DanceMove | Pattern; successRate: number }>;
-}
-
-// Overall User Statistics
-export interface UserStatistics {
-  totalSessions: number;
-  totalPracticeTime: number;
-  overallSuccessRate: number;
-  mostPracticedMoves: Array<{ item: DanceMove | Pattern; count: number }>;
-  recentSessions: PracticeSession[];
+  successes: number;
+  failures: number;
 }
 ```
 
-### SM-2 Spaced Repetition Algorithm
+### Practice Queue Algorithm
 
-The SM-2 algorithm will be implemented to intelligently suggest the next move/pattern during practice sessions based on:
+Practice sessions are entirely frontend-driven. Instead of SM-2 spaced repetition, moves are selected using a **weighted random sampling** approach with a retry queue for failed items:
 
-1. **Easiness Factor (EF)**: Starts at 2.5, adjusted based on performance
-2. **Repetitions**: Number of consecutive successful reviews
-3. **Interval**: Days until next review (converted to priority score for session)
-4. **Next Review Date**: When the item should be reviewed next
-
-**Algorithm Implementation**:
-
-```typescript
-interface SM2Result {
-  easinessFactor: number;
-  repetitions: number;
-  interval: number;
-  nextReviewDate: Date;
-}
-
-function calculateSM2(
-  currentData: SM2PerformanceData,
-  quality: number // 0-5 scale (0 = complete failure, 5 = perfect)
-): SM2Result {
-  let { easinessFactor, repetitions, interval } = currentData;
-  
-  // Update easiness factor
-  easinessFactor = Math.max(
-    1.3,
-    easinessFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
-  );
-  
-  // Update repetitions and interval
-  if (quality < 3) {
-    repetitions = 0;
-    interval = 1;
-  } else {
-    repetitions += 1;
-    if (repetitions === 1) {
-      interval = 1;
-    } else if (repetitions === 2) {
-      interval = 6;
-    } else {
-      interval = Math.round(interval * easinessFactor);
-    }
-  }
-  
-  const nextReviewDate = new Date();
-  nextReviewDate.setDate(nextReviewDate.getDate() + interval);
-  
-  return { easinessFactor, repetitions, interval, nextReviewDate };
-}
-
-// Convert swipe result to quality score
-function swipeToQuality(success: boolean): number {
-  return success ? 4 : 2; // Right swipe = 4, Left swipe = 2
-}
-
-// Select next item for practice
-function selectNextItem(
-  availableItems: Array<{ item: DanceMove | Pattern; sm2Data: SM2PerformanceData }>,
-  currentTime: Date
-): DanceMove | Pattern {
-  // Calculate priority scores (items due for review get higher priority)
-  const scoredItems = availableItems.map(({ item, sm2Data }) => {
-    const daysSinceReview = Math.floor(
-      (currentTime.getTime() - sm2Data.nextReviewDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    const priority = daysSinceReview > 0 ? daysSinceReview * (3 - sm2Data.easinessFactor) : 0;
-    return { item, priority };
-  });
-  
-  // Sort by priority (highest first) and add randomization
-  scoredItems.sort((a, b) => b.priority - a.priority);
-  
-  // Select from top 3 items randomly to add variety
-  const topItems = scoredItems.slice(0, Math.min(3, scoredItems.length));
-  const selectedIndex = Math.floor(Math.random() * topItems.length);
-  
-  return topItems[selectedIndex].item;
-}
-```
+1. **Random Selection**: The next move/pattern is randomly sampled from the practice set items, weighted by a score derived from `failures / attempts` (items with more failures relative to successes are more likely to be selected).
+2. **No Immediate Repeat**: The previously shown item is excluded from the next selection.
+3. **Session Lifetime**: The session runs until the user manually ends it. No session data is persisted to the server.
 
 ### Server Services
 
@@ -397,25 +232,10 @@ function selectNextItem(
 **practice-sets.ts**
 - `createPracticeSet(userId, data)`: Create practice set with items
 - `getPracticeSet(id, userId)`: Get practice set with all items
-- `getPracticeSetsByUser(userId)`: Get all practice sets
+- `getPracticeSetsByUser(userId)`: Get all practice sets for user
 - `updatePracticeSet(id, userId, data)`: Update practice set
 - `deletePracticeSet(id, userId)`: Delete practice set
 - `searchPracticeSets(userId, query)`: Search practice sets
-
-**practice-sessions.ts**
-- `startSession(userId, practiceSetId)`: Create new session
-- `recordExecution(sessionId, itemType, itemId, success)`: Record move execution
-- `endSession(sessionId)`: End session and calculate stats
-- `getSession(id, userId)`: Get session with executions
-- `getSessionsByUser(userId)`: Get all user sessions
-- `updateSessionNotes(sessionId, userId, notes)`: Add notes to session
-- `calculateSessionStats(sessionId)`: Calculate session statistics
-
-**sm2-service.ts**
-- `initializeSM2Data(userId, itemType, itemId)`: Create initial SM-2 record
-- `getSM2Data(userId, itemType, itemId)`: Get current SM-2 data
-- `updateSM2Data(userId, itemType, itemId, quality)`: Update after execution
-- `getNextItem(userId, practiceSetId)`: Select next item using SM-2
 
 ### Client Components
 
@@ -444,22 +264,13 @@ function selectNextItem(
 - Submit handler
 
 **PracticeView Component**
-- Full-screen card display with move/pattern name
-- Swipe gesture detection (left/right)
+- Full-screen display with move/pattern name prominently shown
+- Large thumbs up and thumbs down buttons positioned at the bottom for easy access while dancing
 - Stop button (bottom left)
-- Session state management using Svelte 5 runes
-- Real-time SM-2 integration for next item selection
-
-**PracticeLog Component**
-- Session list with date, duration, practice set
-- Detailed view with statistics
-- Best/worst moves calculation
-- Notes editor
-- Visual charts for success rates
+- Session state management using Svelte 5 runes (entirely client-side)
+- Weighted random selection with retry queue for failed items
 
 **Profile Component**
-- User statistics dashboard
-- Training log access
 - Logout button
 
 ## Data Models
@@ -468,11 +279,9 @@ function selectNextItem(
 
 ```
 User (Stack Auth)
-  ├── has many → Moves
-  ├── has many → Patterns
-  ├── has many → Practice Sets
-  ├── has many → Practice Sessions
-  └── has many → SM2 Performance Records
+  ├── has many → Moves (private, per-user)
+  ├── has many → Patterns (private, per-user)
+  └── has many → Practice Sets (private, per-user)
 
 Pattern
   └── has many → Pattern Moves (ordered)
@@ -481,14 +290,6 @@ Pattern
 Practice Set
   └── has many → Practice Set Items
         └── references → Move OR Pattern
-
-Practice Session
-  ├── belongs to → Practice Set
-  └── has many → Practice Executions
-        └── references → Move OR Pattern
-
-SM2 Performance
-  └── references → Move OR Pattern (polymorphic)
 ```
 
 ### Data Flow
@@ -496,15 +297,13 @@ SM2 Performance
 1. **Authentication**: Stack Auth manages user sessions via cookies
 2. **Data Fetching**: SvelteKit load functions fetch data server-side
 3. **Mutations**: Form actions handle creates/updates/deletes
-4. **Practice Sessions**: Client-side state management with periodic server sync
-5. **SM-2 Updates**: Server-side calculation after each execution
+4. **Practice Sessions**: Entirely client-side state management (no server persistence)
 
 ## Error Handling
 
 ### Client-Side Errors
 - Form validation errors displayed inline
 - Network errors shown via toast notifications
-- Graceful degradation for offline scenarios
 - Loading states for async operations
 
 ### Server-Side Errors
@@ -514,17 +313,11 @@ SM2 Performance
 - Database errors → logged and generic error message to user
 - Validation errors → returned to form with details
 
-### Practice Session Error Handling
-- Session state persisted to localStorage as backup
-- Automatic recovery on page reload
-- Graceful handling of network interruptions during practice
-- Ability to resume interrupted sessions
-
 ## Testing Strategy
 
 ### Unit Tests
-- SM-2 algorithm calculations
-- Utility functions (date formatting, statistics calculations)
+- Practice queue algorithm (weighted selection, retry queue)
+- Utility functions (date formatting, etc.)
 - Form validation logic
 - Service layer functions
 
@@ -532,7 +325,6 @@ SM2 Performance
 - Database operations with test database
 - API endpoints with authentication
 - Form submissions and data persistence
-- SM-2 data updates during practice sessions
 
 ### Test Data
 - Seed scripts for development database
@@ -544,48 +336,49 @@ SM2 Performance
 1. **Database Queries**
    - Use Drizzle's query builder for optimized joins
    - Index on userId for all user-scoped queries
-   - Index on practiceSetId for session queries
    - Pagination for large lists
 
 2. **Client-Side Performance**
-   - Lazy load practice session history
    - Virtual scrolling for large libraries
    - Debounced search inputs
    - Optimistic UI updates
 
 3. **Caching Strategy**
    - SvelteKit's built-in caching for static assets
-   - Server-side caching of user statistics
    - Client-side caching of practice set data during sessions
 
 ## Security Considerations
 
 1. **Authentication & Authorization**
    - All API routes check user authentication via Stack Auth
-   - Row-level security via userId checks in queries
+   - **Row-level security via userId checks in ALL database queries**
+   - **Every service function MUST include userId parameter and validate ownership**
+   - **All database queries MUST filter by userId to prevent cross-user data access**
    - CSRF protection via SvelteKit's built-in mechanisms
 
 2. **Data Validation**
    - Server-side validation for all inputs
    - SQL injection prevention via Drizzle's parameterized queries
    - XSS prevention via Svelte's automatic escaping
+   - **User ownership validation on every data access operation**
 
 3. **Privacy**
-   - User data isolated by userId
-   - No sharing features (private by default)
+   - **User data strictly isolated by userId with no exceptions**
+   - **All moves, patterns, and practice sets are private to the creating user**
+   - **There are no sharing features—practice sets are scoped per user only**
    - Secure session management via httpOnly cookies
+   - **URL parameter validation to prevent unauthorized access via direct links**
 
 ## Mobile Considerations
 
 1. **Responsive Design**
    - Mobile-first approach with TailwindCSS
-   - Touch-optimized UI elements
-   - Swipe gestures for practice view
+   - Touch-optimized UI elements with large button targets
+   - Thumbs up/down buttons designed for easy access while dancing
 
 2. **Progressive Web App**
    - Service worker for offline capability
    - App manifest for install prompt
-   - Local storage for session persistence
 
 3. **Performance**
    - Minimal JavaScript bundle size

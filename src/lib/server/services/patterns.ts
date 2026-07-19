@@ -17,6 +17,21 @@ export interface UpdatePatternData {
 }
 
 export async function createPattern(userId: string, data: CreatePatternData): Promise<Pattern> {
+    // Validate that all moveIds belong to the user
+    if (data.moveIds && data.moveIds.length > 0) {
+        const userMoves = await db
+            .select({ id: moves.id })
+            .from(moves)
+            .where(and(eq(moves.userId, userId), or(...data.moveIds.map(id => eq(moves.id, id)))));
+
+        const foundMoveIds = new Set(userMoves.map(move => move.id));
+        const missingMoves = data.moveIds.filter(id => !foundMoveIds.has(id));
+
+        if (missingMoves.length > 0) {
+            throw new Error(`Moves not found or unauthorized: ${missingMoves.join(', ')}`);
+        }
+    }
+
     // Create the pattern
     const [pattern] = await db
         .insert(patterns)
@@ -49,7 +64,7 @@ export async function getPattern(id: number, userId: string): Promise<Pattern | 
         return null;
     }
 
-    // Fetch pattern moves with move details
+    // Fetch pattern moves with move details - ensure moves belong to the user
     const patternMovesData = await db
         .select({
             id: patternMoves.id,
@@ -59,7 +74,7 @@ export async function getPattern(id: number, userId: string): Promise<Pattern | 
             move: moves
         })
         .from(patternMoves)
-        .innerJoin(moves, eq(patternMoves.moveId, moves.id))
+        .innerJoin(moves, and(eq(patternMoves.moveId, moves.id), eq(moves.userId, userId)))
         .where(eq(patternMoves.patternId, id))
         .orderBy(patternMoves.sequenceOrder);
 
@@ -72,30 +87,39 @@ export async function getPattern(id: number, userId: string): Promise<Pattern | 
 export async function getPatternsByUser(userId: string): Promise<Pattern[]> {
     const userPatterns = await db.select().from(patterns).where(eq(patterns.userId, userId));
 
-    // Fetch moves for each pattern
-    const patternsWithMoves = await Promise.all(
-        userPatterns.map(async (pattern) => {
-            const patternMovesData = await db
-                .select({
-                    id: patternMoves.id,
-                    patternId: patternMoves.patternId,
-                    moveId: patternMoves.moveId,
-                    sequenceOrder: patternMoves.sequenceOrder,
-                    move: moves
-                })
-                .from(patternMoves)
-                .innerJoin(moves, eq(patternMoves.moveId, moves.id))
-                .where(eq(patternMoves.patternId, pattern.id))
-                .orderBy(patternMoves.sequenceOrder);
+    if (userPatterns.length === 0) {
+        return [];
+    }
 
-            return {
-                ...pattern,
-                moves: patternMovesData as PatternMove[]
-            } as Pattern;
+    // Fetch all pattern moves in one query
+    const patternIds = userPatterns.map(p => p.id);
+    const allPatternMoves = await db
+        .select({
+            id: patternMoves.id,
+            patternId: patternMoves.patternId,
+            moveId: patternMoves.moveId,
+            sequenceOrder: patternMoves.sequenceOrder,
+            move: moves
         })
-    );
+        .from(patternMoves)
+        .innerJoin(moves, and(eq(patternMoves.moveId, moves.id), eq(moves.userId, userId)))
+        .where(or(...patternIds.map(id => eq(patternMoves.patternId, id))))
+        .orderBy(patternMoves.sequenceOrder);
 
-    return patternsWithMoves;
+    // Group pattern moves by pattern ID
+    const patternMovesMap = new Map<number, typeof allPatternMoves>();
+    for (const pm of allPatternMoves) {
+        if (!patternMovesMap.has(pm.patternId)) {
+            patternMovesMap.set(pm.patternId, []);
+        }
+        patternMovesMap.get(pm.patternId)!.push(pm);
+    }
+
+    // Assemble the final result
+    return userPatterns.map(pattern => ({
+        ...pattern,
+        moves: (patternMovesMap.get(pattern.id) || []) as PatternMove[]
+    } as Pattern));
 }
 
 export async function updatePattern(
@@ -124,6 +148,21 @@ export async function updatePattern(
 
     // Update move sequence if provided
     if (data.moveIds !== undefined) {
+        // Validate that all moveIds belong to the user
+        if (data.moveIds.length > 0) {
+            const userMoves = await db
+                .select({ id: moves.id })
+                .from(moves)
+                .where(and(eq(moves.userId, userId), or(...data.moveIds.map(id => eq(moves.id, id)))));
+
+            const foundMoveIds = new Set(userMoves.map(move => move.id));
+            const missingMoves = data.moveIds.filter(id => !foundMoveIds.has(id));
+
+            if (missingMoves.length > 0) {
+                throw new Error(`Moves not found or unauthorized: ${missingMoves.join(', ')}`);
+            }
+        }
+
         // Delete existing pattern moves
         await db.delete(patternMoves).where(eq(patternMoves.patternId, id));
 
@@ -163,28 +202,37 @@ export async function searchPatterns(userId: string, query: string): Promise<Pat
             )
         );
 
-    // Fetch moves for each pattern
-    const patternsWithMoves = await Promise.all(
-        searchResults.map(async (pattern) => {
-            const patternMovesData = await db
-                .select({
-                    id: patternMoves.id,
-                    patternId: patternMoves.patternId,
-                    moveId: patternMoves.moveId,
-                    sequenceOrder: patternMoves.sequenceOrder,
-                    move: moves
-                })
-                .from(patternMoves)
-                .innerJoin(moves, eq(patternMoves.moveId, moves.id))
-                .where(eq(patternMoves.patternId, pattern.id))
-                .orderBy(patternMoves.sequenceOrder);
+    if (searchResults.length === 0) {
+        return [];
+    }
 
-            return {
-                ...pattern,
-                moves: patternMovesData as PatternMove[]
-            } as Pattern;
+    // Fetch all pattern moves in one query
+    const patternIds = searchResults.map(p => p.id);
+    const allPatternMoves = await db
+        .select({
+            id: patternMoves.id,
+            patternId: patternMoves.patternId,
+            moveId: patternMoves.moveId,
+            sequenceOrder: patternMoves.sequenceOrder,
+            move: moves
         })
-    );
+        .from(patternMoves)
+        .innerJoin(moves, and(eq(patternMoves.moveId, moves.id), eq(moves.userId, userId)))
+        .where(or(...patternIds.map(id => eq(patternMoves.patternId, id))))
+        .orderBy(patternMoves.sequenceOrder);
 
-    return patternsWithMoves;
+    // Group pattern moves by pattern ID
+    const patternMovesMap = new Map<number, typeof allPatternMoves>();
+    for (const pm of allPatternMoves) {
+        if (!patternMovesMap.has(pm.patternId)) {
+            patternMovesMap.set(pm.patternId, []);
+        }
+        patternMovesMap.get(pm.patternId)!.push(pm);
+    }
+
+    // Assemble the final result
+    return searchResults.map(pattern => ({
+        ...pattern,
+        moves: (patternMovesMap.get(pattern.id) || []) as PatternMove[]
+    } as Pattern));
 }

@@ -187,9 +187,9 @@
 					{#each iconOptions as icon}
 						<button
 							type="button"
-							class="btn btn-square"
-							class:btn-primary={selectedIcon === icon}
-							class:btn-outline={selectedIcon !== icon}
+							class="btn btn-square {selectedIcon === icon
+								? 'btn-primary'
+								: 'btn-ghost bg-base-200'}"
 							onclick={() => (selectedIcon = icon)}
 						>
 							<span class="text-2xl">{icon}</span>

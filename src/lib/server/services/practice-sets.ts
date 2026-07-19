@@ -21,16 +21,23 @@ export interface UpdatePracticeSetData {
 
 async function fetchItemDetails(
     itemType: 'move' | 'pattern',
-    itemId: number
+    itemId: number,
+    userId: string
 ): Promise<DanceMove | Pattern | null> {
     if (itemType === 'move') {
-        const [move] = await db.select().from(moves).where(eq(moves.id, itemId));
+        const [move] = await db
+            .select()
+            .from(moves)
+            .where(and(eq(moves.id, itemId), eq(moves.userId, userId)));
         return move ? (move as DanceMove) : null;
     } else {
-        const [pattern] = await db.select().from(patterns).where(eq(patterns.id, itemId));
+        const [pattern] = await db
+            .select()
+            .from(patterns)
+            .where(and(eq(patterns.id, itemId), eq(patterns.userId, userId)));
         if (!pattern) return null;
 
-        // Fetch pattern moves
+        // Fetch pattern moves - ensure moves also belong to the user
         const patternMovesData = await db
             .select({
                 id: patternMoves.id,
@@ -40,7 +47,7 @@ async function fetchItemDetails(
                 move: moves
             })
             .from(patternMoves)
-            .innerJoin(moves, eq(patternMoves.moveId, moves.id))
+            .innerJoin(moves, and(eq(patternMoves.moveId, moves.id), eq(moves.userId, userId)))
             .where(eq(patternMoves.patternId, itemId))
             .orderBy(patternMoves.sequenceOrder);
 
@@ -55,6 +62,43 @@ export async function createPracticeSet(
     userId: string,
     data: CreatePracticeSetData
 ): Promise<PracticeSet> {
+    // Validate that all items belong to the user
+    if (data.items && data.items.length > 0) {
+        // Separate moves and patterns for batch validation
+        const moveIds = data.items.filter(item => item.itemType === 'move').map(item => item.itemId);
+        const patternIds = data.items.filter(item => item.itemType === 'pattern').map(item => item.itemId);
+
+        // Batch validate moves
+        if (moveIds.length > 0) {
+            const userMoves = await db
+                .select({ id: moves.id })
+                .from(moves)
+                .where(and(eq(moves.userId, userId), or(...moveIds.map(id => eq(moves.id, id)))));
+
+            const foundMoveIds = new Set(userMoves.map(move => move.id));
+            const missingMoves = moveIds.filter(id => !foundMoveIds.has(id));
+
+            if (missingMoves.length > 0) {
+                throw new Error(`Moves not found or unauthorized: ${missingMoves.join(', ')}`);
+            }
+        }
+
+        // Batch validate patterns
+        if (patternIds.length > 0) {
+            const userPatterns = await db
+                .select({ id: patterns.id })
+                .from(patterns)
+                .where(and(eq(patterns.userId, userId), or(...patternIds.map(id => eq(patterns.id, id)))));
+
+            const foundPatternIds = new Set(userPatterns.map(pattern => pattern.id));
+            const missingPatterns = patternIds.filter(id => !foundPatternIds.has(id));
+
+            if (missingPatterns.length > 0) {
+                throw new Error(`Patterns not found or unauthorized: ${missingPatterns.join(', ')}`);
+            }
+        }
+    }
+
     // Create the practice set
     const [practiceSet] = await db
         .insert(practiceSets)
@@ -100,7 +144,8 @@ export async function getPracticeSet(id: number, userId: string): Promise<Practi
         items.map(async (item) => {
             const itemDetails = await fetchItemDetails(
                 item.itemType as 'move' | 'pattern',
-                item.itemId
+                item.itemId,
+                userId
             );
             return {
                 ...item,
@@ -121,35 +166,103 @@ export async function getPracticeSetsByUser(userId: string): Promise<PracticeSet
         .from(practiceSets)
         .where(eq(practiceSets.userId, userId));
 
-    // Fetch items for each practice set
-    const practiceSetsWithItems = await Promise.all(
-        userPracticeSets.map(async (practiceSet) => {
-            const items = await db
-                .select()
-                .from(practiceSetItems)
-                .where(eq(practiceSetItems.practiceSetId, practiceSet.id));
+    if (userPracticeSets.length === 0) {
+        return [];
+    }
 
-            const itemsWithDetails = await Promise.all(
-                items.map(async (item) => {
-                    const itemDetails = await fetchItemDetails(
-                        item.itemType as 'move' | 'pattern',
-                        item.itemId
-                    );
-                    return {
-                        ...item,
-                        item: itemDetails
-                    } as PracticeSetItem;
-                })
-            );
+    // Fetch all practice set items in one query
+    const practiceSetIds = userPracticeSets.map(ps => ps.id);
+    const allItems = await db
+        .select()
+        .from(practiceSetItems)
+        .where(or(...practiceSetIds.map(id => eq(practiceSetItems.practiceSetId, id))));
+
+    // Group items by practice set ID
+    const itemsByPracticeSet = new Map<number, typeof allItems>();
+    for (const item of allItems) {
+        if (!itemsByPracticeSet.has(item.practiceSetId)) {
+            itemsByPracticeSet.set(item.practiceSetId, []);
+        }
+        itemsByPracticeSet.get(item.practiceSetId)!.push(item);
+    }
+
+    // Fetch all moves and patterns in batch
+    const moveIds = allItems.filter(item => item.itemType === 'move').map(item => item.itemId);
+    const patternIds = allItems.filter(item => item.itemType === 'pattern').map(item => item.itemId);
+
+    const [allMoves, allPatterns] = await Promise.all([
+        moveIds.length > 0 ? db
+            .select()
+            .from(moves)
+            .where(and(eq(moves.userId, userId), or(...moveIds.map(id => eq(moves.id, id)))))
+            : Promise.resolve([]),
+        patternIds.length > 0 ? db
+            .select()
+            .from(patterns)
+            .where(and(eq(patterns.userId, userId), or(...patternIds.map(id => eq(patterns.id, id)))))
+            : Promise.resolve([])
+    ]);
+
+    // Fetch pattern moves for all patterns in batch
+    const allPatternMoves = patternIds.length > 0 ? await db
+        .select({
+            id: patternMoves.id,
+            patternId: patternMoves.patternId,
+            moveId: patternMoves.moveId,
+            sequenceOrder: patternMoves.sequenceOrder,
+            move: moves
+        })
+        .from(patternMoves)
+        .innerJoin(moves, and(eq(patternMoves.moveId, moves.id), eq(moves.userId, userId)))
+        .where(or(...patternIds.map(id => eq(patternMoves.patternId, id))))
+        .orderBy(patternMoves.sequenceOrder)
+        : [];
+
+    // Create lookup maps
+    const movesMap = new Map(allMoves.map(move => [move.id, move as DanceMove]));
+    const patternsMap = new Map(allPatterns.map(pattern => [pattern.id, pattern]));
+
+    // Group pattern moves by pattern ID
+    const patternMovesMap = new Map<number, typeof allPatternMoves>();
+    for (const pm of allPatternMoves) {
+        if (!patternMovesMap.has(pm.patternId)) {
+            patternMovesMap.set(pm.patternId, []);
+        }
+        patternMovesMap.get(pm.patternId)!.push(pm);
+    }
+
+    // Build complete patterns
+    const completePatterns = new Map<number, Pattern>();
+    for (const [patternId, pattern] of patternsMap) {
+        completePatterns.set(patternId, {
+            ...pattern,
+            moves: (patternMovesMap.get(patternId) || []) as PatternMove[]
+        } as Pattern);
+    }
+
+    // Assemble the final result
+    return userPracticeSets.map(practiceSet => {
+        const items = itemsByPracticeSet.get(practiceSet.id) || [];
+        const itemsWithDetails = items.map(item => {
+            let itemDetails: DanceMove | Pattern | null = null;
+
+            if (item.itemType === 'move') {
+                itemDetails = movesMap.get(item.itemId) || null;
+            } else {
+                itemDetails = completePatterns.get(item.itemId) || null;
+            }
 
             return {
-                ...practiceSet,
-                items: itemsWithDetails
-            } as PracticeSet;
-        })
-    );
+                ...item,
+                item: itemDetails
+            } as PracticeSetItem;
+        });
 
-    return practiceSetsWithItems;
+        return {
+            ...practiceSet,
+            items: itemsWithDetails
+        } as PracticeSet;
+    });
 }
 
 export async function updatePracticeSet(
@@ -186,6 +299,43 @@ export async function updatePracticeSet(
 
     // Update items if provided
     if (data.items !== undefined) {
+        // Validate that all items belong to the user
+        if (data.items.length > 0) {
+            // Separate moves and patterns for batch validation
+            const moveIds = data.items.filter(item => item.itemType === 'move').map(item => item.itemId);
+            const patternIds = data.items.filter(item => item.itemType === 'pattern').map(item => item.itemId);
+
+            // Batch validate moves
+            if (moveIds.length > 0) {
+                const userMoves = await db
+                    .select({ id: moves.id })
+                    .from(moves)
+                    .where(and(eq(moves.userId, userId), or(...moveIds.map(id => eq(moves.id, id)))));
+
+                const foundMoveIds = new Set(userMoves.map(move => move.id));
+                const missingMoves = moveIds.filter(id => !foundMoveIds.has(id));
+
+                if (missingMoves.length > 0) {
+                    throw new Error(`Moves not found or unauthorized: ${missingMoves.join(', ')}`);
+                }
+            }
+
+            // Batch validate patterns
+            if (patternIds.length > 0) {
+                const userPatterns = await db
+                    .select({ id: patterns.id })
+                    .from(patterns)
+                    .where(and(eq(patterns.userId, userId), or(...patternIds.map(id => eq(patterns.id, id)))));
+
+                const foundPatternIds = new Set(userPatterns.map(pattern => pattern.id));
+                const missingPatterns = patternIds.filter(id => !foundPatternIds.has(id));
+
+                if (missingPatterns.length > 0) {
+                    throw new Error(`Patterns not found or unauthorized: ${missingPatterns.join(', ')}`);
+                }
+            }
+        }
+
         // Delete existing items
         await db.delete(practiceSetItems).where(eq(practiceSetItems.practiceSetId, id));
 
@@ -240,33 +390,101 @@ export async function searchPracticeSets(
 
     const searchResults = await searchQuery;
 
-    // Fetch items for each practice set
-    const practiceSetsWithItems = await Promise.all(
-        searchResults.map(async (practiceSet) => {
-            const items = await db
-                .select()
-                .from(practiceSetItems)
-                .where(eq(practiceSetItems.practiceSetId, practiceSet.id));
+    if (searchResults.length === 0) {
+        return [];
+    }
 
-            const itemsWithDetails = await Promise.all(
-                items.map(async (item) => {
-                    const itemDetails = await fetchItemDetails(
-                        item.itemType as 'move' | 'pattern',
-                        item.itemId
-                    );
-                    return {
-                        ...item,
-                        item: itemDetails
-                    } as PracticeSetItem;
-                })
-            );
+    // Fetch all practice set items in one query
+    const practiceSetIds = searchResults.map(ps => ps.id);
+    const allItems = await db
+        .select()
+        .from(practiceSetItems)
+        .where(or(...practiceSetIds.map(id => eq(practiceSetItems.practiceSetId, id))));
+
+    // Group items by practice set ID
+    const itemsByPracticeSet = new Map<number, typeof allItems>();
+    for (const item of allItems) {
+        if (!itemsByPracticeSet.has(item.practiceSetId)) {
+            itemsByPracticeSet.set(item.practiceSetId, []);
+        }
+        itemsByPracticeSet.get(item.practiceSetId)!.push(item);
+    }
+
+    // Fetch all moves and patterns in batch
+    const moveIds = allItems.filter(item => item.itemType === 'move').map(item => item.itemId);
+    const patternIds = allItems.filter(item => item.itemType === 'pattern').map(item => item.itemId);
+
+    const [allMoves, allPatterns] = await Promise.all([
+        moveIds.length > 0 ? db
+            .select()
+            .from(moves)
+            .where(and(eq(moves.userId, userId), or(...moveIds.map(id => eq(moves.id, id)))))
+            : Promise.resolve([]),
+        patternIds.length > 0 ? db
+            .select()
+            .from(patterns)
+            .where(and(eq(patterns.userId, userId), or(...patternIds.map(id => eq(patterns.id, id)))))
+            : Promise.resolve([])
+    ]);
+
+    // Fetch pattern moves for all patterns in batch
+    const allPatternMoves = patternIds.length > 0 ? await db
+        .select({
+            id: patternMoves.id,
+            patternId: patternMoves.patternId,
+            moveId: patternMoves.moveId,
+            sequenceOrder: patternMoves.sequenceOrder,
+            move: moves
+        })
+        .from(patternMoves)
+        .innerJoin(moves, and(eq(patternMoves.moveId, moves.id), eq(moves.userId, userId)))
+        .where(or(...patternIds.map(id => eq(patternMoves.patternId, id))))
+        .orderBy(patternMoves.sequenceOrder)
+        : [];
+
+    // Create lookup maps
+    const movesMap = new Map(allMoves.map(move => [move.id, move as DanceMove]));
+    const patternsMap = new Map(allPatterns.map(pattern => [pattern.id, pattern]));
+
+    // Group pattern moves by pattern ID
+    const patternMovesMap = new Map<number, typeof allPatternMoves>();
+    for (const pm of allPatternMoves) {
+        if (!patternMovesMap.has(pm.patternId)) {
+            patternMovesMap.set(pm.patternId, []);
+        }
+        patternMovesMap.get(pm.patternId)!.push(pm);
+    }
+
+    // Build complete patterns
+    const completePatterns = new Map<number, Pattern>();
+    for (const [patternId, pattern] of patternsMap) {
+        completePatterns.set(patternId, {
+            ...pattern,
+            moves: (patternMovesMap.get(patternId) || []) as PatternMove[]
+        } as Pattern);
+    }
+
+    // Assemble the final result
+    return searchResults.map(practiceSet => {
+        const items = itemsByPracticeSet.get(practiceSet.id) || [];
+        const itemsWithDetails = items.map(item => {
+            let itemDetails: DanceMove | Pattern | null = null;
+
+            if (item.itemType === 'move') {
+                itemDetails = movesMap.get(item.itemId) || null;
+            } else {
+                itemDetails = completePatterns.get(item.itemId) || null;
+            }
 
             return {
-                ...practiceSet,
-                items: itemsWithDetails
-            } as PracticeSet;
-        })
-    );
+                ...item,
+                item: itemDetails
+            } as PracticeSetItem;
+        });
 
-    return practiceSetsWithItems;
+        return {
+            ...practiceSet,
+            items: itemsWithDetails
+        } as PracticeSet;
+    });
 }

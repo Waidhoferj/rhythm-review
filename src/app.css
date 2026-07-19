@@ -2,8 +2,76 @@
 @plugin 'daisyui';
 
 @plugin 'daisyui/theme' {
-	name: 'caramellatte';
+	name: 'rhythm-light';
 	default: true;
+	prefersdark: false;
+	color-scheme: light;
+
+	--color-base-100: oklch(98% 0.01 240);
+	--color-base-200: oklch(95% 0.01 240);
+	--color-base-300: oklch(90% 0.02 240);
+	--color-base-content: oklch(25% 0.02 240);
+	--color-primary: oklch(55% 0.24 245);
+	--color-primary-content: oklch(98% 0.01 245);
+	--color-secondary: oklch(65% 0.18 280);
+	--color-secondary-content: oklch(98% 0.01 280);
+	--color-accent: oklch(65% 0.2 180);
+	--color-accent-content: oklch(98% 0.01 180);
+	--color-neutral: oklch(40% 0.03 240);
+	--color-neutral-content: oklch(98% 0.01 240);
+	--color-info: oklch(70% 0.18 230);
+	--color-info-content: oklch(98% 0.01 230);
+	--color-success: oklch(65% 0.22 150);
+	--color-success-content: oklch(98% 0.01 150);
+	--color-warning: oklch(80% 0.18 80);
+	--color-warning-content: oklch(25% 0.05 80);
+	--color-error: oklch(60% 0.25 25);
+	--color-error-content: oklch(98% 0.01 25);
+
+	--radius-selector: 1rem;
+	--radius-field: 0.5rem;
+	--radius-box: 0.5rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 1;
+	--noise: 0;
+}
+
+@plugin 'daisyui/theme' {
+	name: 'rhythm-dark';
+	prefersdark: true;
+	color-scheme: dark;
+
+	--color-base-100: oklch(25% 0.02 240);
+	--color-base-200: oklch(22% 0.02 240);
+	--color-base-300: oklch(19% 0.02 240);
+	--color-base-content: oklch(90% 0.01 240);
+	--color-primary: oklch(60% 0.22 245);
+	--color-primary-content: oklch(15% 0.03 245);
+	--color-secondary: oklch(65% 0.16 280);
+	--color-secondary-content: oklch(15% 0.03 280);
+	--color-accent: oklch(65% 0.18 180);
+	--color-accent-content: oklch(15% 0.03 180);
+	--color-neutral: oklch(55% 0.03 240);
+	--color-neutral-content: oklch(95% 0.01 240);
+	--color-info: oklch(70% 0.16 230);
+	--color-info-content: oklch(15% 0.03 230);
+	--color-success: oklch(65% 0.20 150);
+	--color-success-content: oklch(15% 0.03 150);
+	--color-warning: oklch(78% 0.16 80);
+	--color-warning-content: oklch(20% 0.05 80);
+	--color-error: oklch(60% 0.22 25);
+	--color-error-content: oklch(95% 0.01 25);
+
+	--radius-selector: 1rem;
+	--radius-field: 0.5rem;
+	--radius-box: 0.5rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 1;
+	--noise: 0;
 }
 
 @import '@fontsource/fira-mono';
@@ -30,7 +98,6 @@ body {
 	min-height: 100vh;
 	margin: 0;
 	font-family: var(--font-body);
-	background-color: #f5f5f5;
 }
 
 /* Touch-friendly minimum sizes */

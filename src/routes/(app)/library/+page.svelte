@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import IconPlus from '~icons/heroicons/plus-solid';
+	import IconXMark from '~icons/heroicons/x-mark-solid';
 	import IconBolt from '~icons/heroicons/bolt-solid';
 	import NumberedList from '~icons/heroicons/numbered-list-solid';
 	import SquareStack from '~icons/heroicons/square-3-stack-3d-solid';
@@ -187,33 +188,51 @@
 		</div>
 	{/if}
 
-	<!-- Floating Action Button -->
-	<button
-		class="btn btn-circle btn-primary btn-lg fixed bottom-6 right-6 shadow-lg z-50"
-		onclick={() => (showCreatePopup = !showCreatePopup)}
-		aria-label="Create new item"
-	>
-		<IconPlus class="h-8 w-8" />
-	</button>
+	<!-- Backdrop (visible when popup is open) -->
+	<div
+		class="fixed inset-0 bg-black/30 z-40 transition-opacity duration-300
+			{showCreatePopup ? 'opacity-100' : 'opacity-0 pointer-events-none'}"
+		onclick={() => (showCreatePopup = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showCreatePopup = false)}
+		role="button"
+		tabindex="-1"
+		aria-label="Close popup"
+	></div>
 
-	<!-- Create Popup -->
-	{#if showCreatePopup}
-		<div
-			class="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4"
-			onclick={() => (showCreatePopup = false)}
-			onkeydown={(e) => e.key === 'Escape' && (showCreatePopup = false)}
-			role="button"
-			tabindex="-1"
-			aria-label="Close popup"
+	<!-- FAB button (visible when popup is closed) -->
+	<div
+		class="fixed bottom-6 right-6 z-50 transition-all duration-300 ease-out
+			{showCreatePopup ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'}"
+	>
+		<button
+			class="btn btn-circle btn-primary btn-lg shadow-lg"
+			onclick={() => (showCreatePopup = true)}
+			aria-label="Create new item"
 		>
-			<div
-				class="bg-base-100 rounded-lg shadow-xl p-6 max-w-sm w-full"
-				onclick={(e) => e.stopPropagation()}
-				onkeydown={(e) => e.stopPropagation()}
-				role="dialog"
-				tabindex="-1"
-			>
-				<h3 class="text-xl font-bold mb-4">Create New</h3>
+			<IconPlus class="h-8 w-8" />
+		</button>
+	</div>
+
+	<!-- Bottom sheet popup (slides up from bottom on mobile, pops near FAB on desktop) -->
+	<div
+		class="fixed z-50 bottom-0 right-0 left-0 md:left-auto md:bottom-6 md:right-6
+			transition-transform duration-300 ease-out
+			{showCreatePopup ? 'translate-y-0' : 'translate-y-full md:translate-y-[calc(100%+2rem)]'}"
+	>
+		<div class="w-full md:w-72 bg-base-100 rounded-t-2xl md:rounded-2xl shadow-2xl">
+			<div class="p-4 pb-6 md:p-4">
+				<!-- Close button at top-right to match original FAB position -->
+				<div class="flex justify-end mb-3">
+					<button
+						class="btn btn-circle btn-primary btn-lg shadow-lg"
+						onclick={() => (showCreatePopup = false)}
+						aria-label="Close menu"
+					>
+						<IconXMark class="h-8 w-8" />
+					</button>
+				</div>
+
+				<h3 class="text-lg font-bold mb-3 px-1">Create New</h3>
 				<div class="space-y-2">
 					<button class="btn btn-block btn-lg justify-start" onclick={createMove}>
 						<IconBolt class="h-6 w-6" />
@@ -228,10 +247,7 @@
 						<span class="ml-2">Practice Set</span>
 					</button>
 				</div>
-				<button class="btn btn-ghost btn-block mt-4" onclick={() => (showCreatePopup = false)}>
-					Cancel
-				</button>
 			</div>
 		</div>
-	{/if}
+	</div>
 </div>
