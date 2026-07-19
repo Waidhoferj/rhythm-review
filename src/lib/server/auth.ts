@@ -6,10 +6,10 @@ import { PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY, PUBLIC_STACK_PROJECT_ID } from '$e
 
 // Initialize Stack Auth server app
 const stackServerApp = new StackServerApp({
-    projectId: PUBLIC_STACK_PROJECT_ID,
-    publishableClientKey: PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY,
-    secretServerKey: STACK_SECRET_SERVER_KEY,
-    tokenStore: 'cookie'
+	projectId: PUBLIC_STACK_PROJECT_ID,
+	publishableClientKey: PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY,
+	secretServerKey: STACK_SECRET_SERVER_KEY,
+	tokenStore: 'cookie'
 });
 
 /**
@@ -18,13 +18,13 @@ const stackServerApp = new StackServerApp({
  * @returns User object if authenticated, null otherwise
  */
 export async function getCurrentUser(event: RequestEvent) {
-    try {
-        const user = await stackServerApp.getUser({ tokenStore: event.request });
-        return user;
-    } catch (error) {
-        console.error('Error getting current user:', error);
-        return null;
-    }
+	try {
+		const user = await stackServerApp.getUser({ tokenStore: event.request });
+		return user;
+	} catch (error) {
+		console.error('Error getting current user:', error);
+		return null;
+	}
 }
 
 /**
@@ -34,11 +34,11 @@ export async function getCurrentUser(event: RequestEvent) {
  * @returns User object
  */
 export async function requireAuth(event: RequestEvent) {
-    const user = await getCurrentUser(event);
+	const user = await getCurrentUser(event);
 
-    if (!user) {
-        throw redirect(302, '/auth/signin');
-    }
+	if (!user) {
+		throw redirect(302, '/auth/signin');
+	}
 
-    return user;
+	return user;
 }

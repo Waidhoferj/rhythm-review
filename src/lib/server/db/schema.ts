@@ -56,7 +56,6 @@ export const practiceSetItems = pgTable('practice_set_items', {
 	itemId: integer('item_id').notNull() // references either moves.id or patterns.id
 });
 
-
 // Define relations for proper joins
 export const movesRelations = relations(moves, ({ many }) => ({
 	patternMoves: many(patternMoves)
@@ -76,7 +75,6 @@ export const patternMovesRelations = relations(patternMoves, ({ one }) => ({
 		references: [moves.id]
 	})
 }));
-
 
 export const practiceSetItemsRelations = relations(practiceSetItems, ({ one }) => ({
 	practiceSet: one(practiceSets, {

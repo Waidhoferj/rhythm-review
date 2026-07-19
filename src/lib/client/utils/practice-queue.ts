@@ -65,10 +65,7 @@ export function selectNextItem(
  * Record a success for an item in the queue.
  * Returns a new queue with the updated item.
  */
-export function recordSuccess(
-	queue: PracticeQueueItem[],
-	itemId: number
-): PracticeQueueItem[] {
+export function recordSuccess(queue: PracticeQueueItem[], itemId: number): PracticeQueueItem[] {
 	return queue.map((item) =>
 		item.itemId === itemId ? { ...item, successes: item.successes + 1 } : item
 	);
@@ -78,10 +75,7 @@ export function recordSuccess(
  * Record a failure for an item in the queue.
  * Returns a new queue with the updated item.
  */
-export function recordFailure(
-	queue: PracticeQueueItem[],
-	itemId: number
-): PracticeQueueItem[] {
+export function recordFailure(queue: PracticeQueueItem[], itemId: number): PracticeQueueItem[] {
 	return queue.map((item) =>
 		item.itemId === itemId ? { ...item, failures: item.failures + 1 } : item
 	);

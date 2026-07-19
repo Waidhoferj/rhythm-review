@@ -15,43 +15,48 @@ Rhythm Review is designed to help dancers improve their skills through structure
 - **Practice Logs**: Review your training history with detailed statistics and personal notes
 - **User Profiles**: Track overall progress and access your complete training history
 
-
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - PostgreSQL database (or Neon account)
 - Stack Auth project
 
 ### Installation
 
 1. Clone the repository:
+
 ```sh
 git clone <repository-url>
 cd rhythm-review
 ```
 
 2. Install dependencies:
+
 ```sh
 npm install
 ```
 
 3. Set up environment variables:
+
 ```sh
 cp .env.example .env
 ```
 
 Edit `.env` and add your credentials:
+
 - `DATABASE_URL`: Your PostgreSQL connection string
 - Stack Auth configuration variables
 
 4. Push the database schema:
+
 ```sh
 npm run db:push
 ```
 
 5. Start the development server:
+
 ```sh
 npm run dev
 ```

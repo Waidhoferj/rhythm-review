@@ -10,35 +10,35 @@ import type { PageServerLoad } from './$types';
  * Supports search via query parameter
  */
 export const load: PageServerLoad = async (event) => {
-    // Require authentication
-    const user = await requireAuth(event);
+	// Require authentication
+	const user = await requireAuth(event);
 
-    // Get search query from URL parameters
-    const searchQuery = event.url.searchParams.get('q');
+	// Get search query from URL parameters
+	const searchQuery = event.url.searchParams.get('q');
 
-    // Fetch data based on whether there's a search query
-    let moves, patterns, practiceSets;
+	// Fetch data based on whether there's a search query
+	let moves, patterns, practiceSets;
 
-    if (searchQuery) {
-        // Search across all entities
-        [moves, patterns, practiceSets] = await Promise.all([
-            searchMoves(user.id, searchQuery),
-            searchPatterns(user.id, searchQuery),
-            searchPracticeSets(user.id, searchQuery)
-        ]);
-    } else {
-        // Fetch all entities
-        [moves, patterns, practiceSets] = await Promise.all([
-            getMovesByUser(user.id),
-            getPatternsByUser(user.id),
-            getPracticeSetsByUser(user.id)
-        ]);
-    }
+	if (searchQuery) {
+		// Search across all entities
+		[moves, patterns, practiceSets] = await Promise.all([
+			searchMoves(user.id, searchQuery),
+			searchPatterns(user.id, searchQuery),
+			searchPracticeSets(user.id, searchQuery)
+		]);
+	} else {
+		// Fetch all entities
+		[moves, patterns, practiceSets] = await Promise.all([
+			getMovesByUser(user.id),
+			getPatternsByUser(user.id),
+			getPracticeSetsByUser(user.id)
+		]);
+	}
 
-    return {
-        moves,
-        patterns,
-        practiceSets,
-        searchQuery: searchQuery || ''
-    };
+	return {
+		moves,
+		patterns,
+		practiceSets,
+		searchQuery: searchQuery || ''
+	};
 };

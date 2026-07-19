@@ -11,12 +11,34 @@
 
 	const session = createPracticeSession(data.practiceSet.items);
 
+	// Animation state
+	let animState = $state<'idle' | 'exit-up' | 'exit-down' | 'enter'>('idle');
+	let animColor = $state<'text-success' | 'text-error' | ''>('');
+
 	function handleSuccess() {
-		session.markSuccess();
+		animState = 'exit-up';
+		animColor = 'text-success';
+		setTimeout(() => {
+			session.markSuccess();
+			animState = 'enter';
+			animColor = '';
+			setTimeout(() => {
+				animState = 'idle';
+			}, 180);
+		}, 210);
 	}
 
 	function handleFailure() {
-		session.markFailure();
+		animState = 'exit-down';
+		animColor = 'text-error';
+		setTimeout(() => {
+			session.markFailure();
+			animState = 'enter';
+			animColor = '';
+			setTimeout(() => {
+				animState = 'idle';
+			}, 180);
+		}, 210);
 	}
 
 	function handleStop() {
@@ -46,22 +68,31 @@
 		</div>
 
 		<!-- Main practice area - centered text, no card -->
-		<div class="flex-1 flex flex-col items-center justify-center p-4">
-			<h1 class="text-5xl font-bold text-center">{session.currentItem.item.name}</h1>
+		<div class="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
+			<div
+				class="flex flex-col items-center transition-all duration-200 ease-out
+					{animState === 'exit-up' ? '-translate-y-16 opacity-0' : ''}
+					{animState === 'exit-down' ? 'translate-y-16 opacity-0' : ''}
+					{animState === 'enter' ? 'opacity-0' : ''}
+					{animState === 'idle' ? 'translate-y-0 opacity-100' : ''}
+					{animColor}"
+			>
+				<h1 class="text-5xl font-bold text-center">{session.currentItem.item.name}</h1>
 
-			{#if session.currentItem.item.description}
-				<p class="text-xl text-center text-base-content/70 mt-6">
-					{session.currentItem.item.description}
-				</p>
-			{/if}
+				{#if session.currentItem.item.description}
+					<p class="text-xl text-center text-base-content/70 mt-6">
+						{session.currentItem.item.description}
+					</p>
+				{/if}
 
-			{#if isMove(session.currentItem.item)}
-				<div class="badge badge-lg mt-6">{session.currentItem.item.counts} counts</div>
-			{:else if isPattern(session.currentItem.item)}
-				<div class="badge badge-lg mt-6">
-					{session.currentItem.item.moves.length} moves
-				</div>
-			{/if}
+				{#if isMove(session.currentItem.item)}
+					<div class="badge badge-lg mt-6">{session.currentItem.item.counts} counts</div>
+				{:else if isPattern(session.currentItem.item)}
+					<div class="badge badge-lg mt-6">
+						{session.currentItem.item.moves.length} moves
+					</div>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Divider -->

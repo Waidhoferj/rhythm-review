@@ -6,16 +6,16 @@ import type { LayoutServerLoad } from './$types';
  * Redirects to login if user is not authenticated
  */
 export const load: LayoutServerLoad = async (event) => {
-    // Require authentication - will redirect if not authenticated
-    const user = await requireAuth(event);
+	// Require authentication - will redirect if not authenticated
+	const user = await requireAuth(event);
 
-    // Return user data to all child routes
-    return {
-        user: {
-            id: user.id,
-            primaryEmail: user.primaryEmail,
-            displayName: user.displayName,
-            profileImageUrl: user.profileImageUrl
-        }
-    };
+	// Return user data to all child routes
+	return {
+		user: {
+			id: user.id,
+			primaryEmail: user.primaryEmail,
+			displayName: user.displayName,
+			profileImageUrl: user.profileImageUrl
+		}
+	};
 };

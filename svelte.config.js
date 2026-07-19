@@ -6,11 +6,11 @@ const config = {
 	// Consult https://svelte.dev/docs/kit/integrations
 	// for more information about preprocessors
 	preprocess: vitePreprocess(),
-	kit: { 
+	kit: {
 		adapter: adapter({
 			runtime: 'nodejs20.x'
 		})
-	 }
+	}
 };
 
 export default config;

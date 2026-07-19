@@ -93,51 +93,57 @@ The database only persists moves, patterns, and practice sets. Practice sessions
 ```typescript
 // Dance Moves Table
 export const moves = pgTable('moves', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  name: text('name').notNull(),
-  description: text('description'),
-  counts: integer('counts').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
+	id: serial('id').primaryKey(),
+	userId: text('user_id').notNull(),
+	name: text('name').notNull(),
+	description: text('description'),
+	counts: integer('counts').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
 // Patterns Table
 export const patterns = pgTable('patterns', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  name: text('name').notNull(),
-  description: text('description'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
+	id: serial('id').primaryKey(),
+	userId: text('user_id').notNull(),
+	name: text('name').notNull(),
+	description: text('description'),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
 // Pattern Moves Junction Table (for ordering)
 export const patternMoves = pgTable('pattern_moves', {
-  id: serial('id').primaryKey(),
-  patternId: integer('pattern_id').notNull().references(() => patterns.id, { onDelete: 'cascade' }),
-  moveId: integer('move_id').notNull().references(() => moves.id, { onDelete: 'cascade' }),
-  sequenceOrder: integer('sequence_order').notNull()
+	id: serial('id').primaryKey(),
+	patternId: integer('pattern_id')
+		.notNull()
+		.references(() => patterns.id, { onDelete: 'cascade' }),
+	moveId: integer('move_id')
+		.notNull()
+		.references(() => moves.id, { onDelete: 'cascade' }),
+	sequenceOrder: integer('sequence_order').notNull()
 });
 
 // Practice Sets Table
 export const practiceSets = pgTable('practice_sets', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  name: text('name').notNull(),
-  description: text('description'),
-  icon: text('icon'),
-  tags: text('tags').array(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
+	id: serial('id').primaryKey(),
+	userId: text('user_id').notNull(),
+	name: text('name').notNull(),
+	description: text('description'),
+	icon: text('icon'),
+	tags: text('tags').array(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
 // Practice Set Items Junction Table
 export const practiceSetItems = pgTable('practice_set_items', {
-  id: serial('id').primaryKey(),
-  practiceSetId: integer('practice_set_id').notNull().references(() => practiceSets.id, { onDelete: 'cascade' }),
-  itemType: text('item_type').notNull(), // 'move' or 'pattern'
-  itemId: integer('item_id').notNull() // references either moves.id or patterns.id
+	id: serial('id').primaryKey(),
+	practiceSetId: integer('practice_set_id')
+		.notNull()
+		.references(() => practiceSets.id, { onDelete: 'cascade' }),
+	itemType: text('item_type').notNull(), // 'move' or 'pattern'
+	itemId: integer('item_id').notNull() // references either moves.id or patterns.id
 });
 ```
 
@@ -146,60 +152,60 @@ export const practiceSetItems = pgTable('practice_set_items', {
 ```typescript
 // Core Types
 export interface DanceMove {
-  id: number;
-  userId: string;
-  name: string;
-  description?: string;
-  counts: number;
-  createdAt: Date;
-  updatedAt: Date;
+	id: number;
+	userId: string;
+	name: string;
+	description?: string;
+	counts: number;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface Pattern {
-  id: number;
-  userId: string;
-  name: string;
-  description?: string;
-  moves: PatternMove[];
-  createdAt: Date;
-  updatedAt: Date;
+	id: number;
+	userId: string;
+	name: string;
+	description?: string;
+	moves: PatternMove[];
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface PatternMove {
-  id: number;
-  patternId: number;
-  moveId: number;
-  sequenceOrder: number;
-  move: DanceMove;
+	id: number;
+	patternId: number;
+	moveId: number;
+	sequenceOrder: number;
+	move: DanceMove;
 }
 
 export interface PracticeSet {
-  id: number;
-  userId: string;
-  name: string;
-  description?: string;
-  icon?: string;
-  tags: string[];
-  items: PracticeSetItem[];
-  createdAt: Date;
-  updatedAt: Date;
+	id: number;
+	userId: string;
+	name: string;
+	description?: string;
+	icon?: string;
+	tags: string[];
+	items: PracticeSetItem[];
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface PracticeSetItem {
-  id: number;
-  practiceSetId: number;
-  itemType: 'move' | 'pattern';
-  itemId: number;
-  item: DanceMove | Pattern;
+	id: number;
+	practiceSetId: number;
+	itemType: 'move' | 'pattern';
+	itemId: number;
+	item: DanceMove | Pattern;
 }
 
 // Frontend-only practice session types
 export interface PracticeQueueItem {
-  itemType: 'move' | 'pattern';
-  itemId: number;
-  item: DanceMove | Pattern;
-  successes: number;
-  failures: number;
+	itemType: 'move' | 'pattern';
+	itemId: number;
+	item: DanceMove | Pattern;
+	successes: number;
+	failures: number;
 }
 ```
 
@@ -214,6 +220,7 @@ Practice sessions are entirely frontend-driven. Instead of SM-2 spaced repetitio
 ### Server Services
 
 **moves.ts**
+
 - `createMove(userId, data)`: Create a new dance move
 - `getMove(id, userId)`: Get move by ID with auth check
 - `getMovesByUser(userId)`: Get all moves for a user
@@ -222,6 +229,7 @@ Practice sessions are entirely frontend-driven. Instead of SM-2 spaced repetitio
 - `searchMoves(userId, query)`: Search moves by name/description
 
 **patterns.ts**
+
 - `createPattern(userId, data)`: Create pattern with move sequence
 - `getPattern(id, userId)`: Get pattern with moves
 - `getPatternsByUser(userId)`: Get all patterns for user
@@ -230,6 +238,7 @@ Practice sessions are entirely frontend-driven. Instead of SM-2 spaced repetitio
 - `searchPatterns(userId, query)`: Search patterns
 
 **practice-sets.ts**
+
 - `createPracticeSet(userId, data)`: Create practice set with items
 - `getPracticeSet(id, userId)`: Get practice set with all items
 - `getPracticeSetsByUser(userId)`: Get all practice sets for user
@@ -240,17 +249,20 @@ Practice sessions are entirely frontend-driven. Instead of SM-2 spaced repetitio
 ### Client Components
 
 **DanceLibrary Component**
+
 - Search bar with real-time filtering
 - Sectioned list (Practice Sets, Patterns, Moves)
 - Floating action button (FAB) with creation popup
 - Item cards with click handlers
 
 **MoveForm Component**
+
 - Form fields: name (required), description (optional), counts (required number)
 - Validation and error display
 - Submit handler with SvelteKit form actions
 
 **PatternForm Component**
+
 - Form fields: name, description
 - Move selector with search/filter
 - Drag-and-drop reordering of selected moves
@@ -258,12 +270,14 @@ Practice sessions are entirely frontend-driven. Instead of SM-2 spaced repetitio
 - Submit handler
 
 **PracticeSetForm Component**
+
 - Form fields: name, description, icon selector, tags input
 - Multi-select for moves and patterns
 - Visual display of selected items
 - Submit handler
 
 **PracticeView Component**
+
 - Full-screen display with move/pattern name prominently shown
 - Large thumbs up and thumbs down buttons positioned at the bottom for easy access while dancing
 - Stop button (bottom left)
@@ -271,6 +285,7 @@ Practice sessions are entirely frontend-driven. Instead of SM-2 spaced repetitio
 - Weighted random selection with retry queue for failed items
 
 **Profile Component**
+
 - Logout button
 
 ## Data Models
@@ -302,11 +317,13 @@ Practice Set
 ## Error Handling
 
 ### Client-Side Errors
+
 - Form validation errors displayed inline
 - Network errors shown via toast notifications
 - Loading states for async operations
 
 ### Server-Side Errors
+
 - Authentication errors → redirect to login
 - Authorization errors → 403 page
 - Not found errors → 404 page
@@ -316,17 +333,20 @@ Practice Set
 ## Testing Strategy
 
 ### Unit Tests
+
 - Practice queue algorithm (weighted selection, retry queue)
 - Utility functions (date formatting, etc.)
 - Form validation logic
 - Service layer functions
 
 ### Integration Tests
+
 - Database operations with test database
 - API endpoints with authentication
 - Form submissions and data persistence
 
 ### Test Data
+
 - Seed scripts for development database
 - Factory functions for test data generation
 - Isolated test database for integration tests

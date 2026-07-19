@@ -1,4 +1,4 @@
 declare module '~icons/*' {
-    import type { SvelteComponent } from 'svelte';
-    export default class extends SvelteComponent<{ class?: string }> { }
+	import type { SvelteComponent } from 'svelte';
+	export default class extends SvelteComponent<{ class?: string }> {}
 }

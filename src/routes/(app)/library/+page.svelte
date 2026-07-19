@@ -5,6 +5,7 @@
 	import IconPlus from '~icons/heroicons/plus-solid';
 	import IconXMark from '~icons/heroicons/x-mark-solid';
 	import IconBolt from '~icons/heroicons/bolt-solid';
+	import IconUserCircle from '~icons/heroicons/user-circle-solid';
 	import NumberedList from '~icons/heroicons/numbered-list-solid';
 	import SquareStack from '~icons/heroicons/square-3-stack-3d-solid';
 
@@ -67,8 +68,17 @@
 <div class="container mx-auto p-4 pb-24 max-w-6xl">
 	<!-- Header -->
 	<div class="mb-6">
-		<h1 class="text-3xl font-bold mb-2">Dance Library</h1>
-		<p class="text-sm text-base-content/70">
+		<div class="flex items-center justify-between">
+			<h1 class="text-3xl font-bold">Dance Library</h1>
+			<button
+				class="btn btn-ghost btn-circle"
+				onclick={() => goto('/profile')}
+				aria-label="Profile & Settings"
+			>
+				<IconUserCircle class="h-7 w-7" />
+			</button>
+		</div>
+		<p class="text-sm text-base-content/70 mt-1">
 			Welcome, {data.user.displayName || data.user.primaryEmail}!
 		</p>
 	</div>

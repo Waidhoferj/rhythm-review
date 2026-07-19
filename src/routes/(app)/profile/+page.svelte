@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { stackClientApp } from '$lib/client/stack';
+	import IconArrowLeft from '~icons/heroicons/arrow-left-solid';
 
 	interface Props {
 		data: {
@@ -30,7 +31,13 @@
 </script>
 
 <div class="container mx-auto p-4 max-w-2xl">
-	<h1 class="text-3xl font-bold mb-6">Profile</h1>
+	<div class="mb-6">
+		<button class="btn btn-ghost btn-sm mb-4" onclick={() => goto('/library')}>
+			<IconArrowLeft class="h-5 w-5" />
+			Back to Library
+		</button>
+		<h1 class="text-3xl font-bold">Profile</h1>
+	</div>
 
 	<!-- User Info -->
 	<div class="card bg-base-200 mb-6">
