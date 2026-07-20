@@ -376,9 +376,23 @@ export async function updatePracticeSet(
 }
 
 export async function deletePracticeSet(id: number, userId: string): Promise<boolean> {
+	// Verify ownership first
+	const [existing] = await db
+		.select({ id: practiceSets.id })
+		.from(practiceSets)
+		.where(and(eq(practiceSets.id, id), eq(practiceSets.userId, userId)));
+
+	if (!existing) {
+		return false;
+	}
+
+	// Explicitly delete items first (in case CASCADE isn't applied in DB)
+	await db.delete(practiceSetItems).where(eq(practiceSetItems.practiceSetId, id));
+
+	// Then delete the practice set
 	const result = await db
 		.delete(practiceSets)
-		.where(and(eq(practiceSets.id, id), eq(practiceSets.userId, userId)))
+		.where(eq(practiceSets.id, id))
 		.returning();
 
 	return result.length > 0;

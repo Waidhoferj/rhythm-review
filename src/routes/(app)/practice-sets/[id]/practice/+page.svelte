@@ -167,7 +167,13 @@
 						<div class="card-body">
 							<h3 class="card-title text-lg">Item Breakdown</h3>
 							<div class="space-y-2">
-								{#each session.queue.filter((item) => item.successes + item.failures > 0) as item}
+								{#each session.queue
+									.filter((item) => item.successes + item.failures > 0)
+									.sort((a, b) => {
+										const rateA = a.successes / (a.successes + a.failures);
+										const rateB = b.successes / (b.successes + b.failures);
+										return rateA - rateB;
+									}) as item}
 									{@const attempts = item.successes + item.failures}
 									{@const rate = Math.round((item.successes / attempts) * 100)}
 									<div class="flex items-center justify-between p-3 bg-base-100 rounded-lg">

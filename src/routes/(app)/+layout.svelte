@@ -8,9 +8,13 @@
 		// @ts-ignore - View Transitions API
 		if (!document.startViewTransition) return;
 
+		const fromPath = navigation.from?.url?.pathname || '';
+		const toPath = navigation.to?.url?.pathname || '';
+
+		// Skip transition for same-page navigations (e.g., search/filter)
+		if (fromPath === toPath) return;
+
 		return new Promise((resolve) => {
-			const fromPath = navigation.from?.url?.pathname || '';
-			const toPath = navigation.to?.url?.pathname || '';
 			const direction = getNavigationDirection(fromPath, toPath);
 
 			// Set direction class on document for CSS to pick up

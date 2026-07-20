@@ -206,14 +206,11 @@
 				action="?/delete"
 				use:enhance={() => {
 					isDeleting = true;
-					return async ({ result, update }) => {
+					return async ({ update }) => {
+						await update();
+						// If we reach here without navigating away, reset state
 						isDeleting = false;
-						if (result.type === 'redirect') {
-							goto(result.location);
-						} else {
-							await update();
-							showDeleteConfirm = false;
-						}
+						showDeleteConfirm = false;
 					};
 				}}
 			>
