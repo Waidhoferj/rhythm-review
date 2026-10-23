@@ -97,7 +97,7 @@
 	<!-- Practice Sets Section -->
 	{#if data.practiceSets.length > 0}
 		<section class="mb-8">
-			<h2 class="text-2xl font-semibold mb-4">Practice Sets</h2>
+			<h2 class="sticky top-0 z-10 bg-base-100 py-3 text-2xl font-semibold mb-4">Practice Sets</h2>
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each data.practiceSets as practiceSet}
 					<button
@@ -138,7 +138,7 @@
 	<!-- Patterns Section -->
 	{#if data.patterns.length > 0}
 		<section class="mb-8">
-			<h2 class="text-2xl font-semibold mb-4">Patterns</h2>
+			<h2 class="sticky top-0 z-10 bg-base-100 py-3 text-2xl font-semibold mb-4">Patterns</h2>
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each data.patterns as pattern}
 					<button
@@ -163,7 +163,7 @@
 	<!-- Moves Section -->
 	{#if data.moves.length > 0}
 		<section class="mb-8">
-			<h2 class="text-2xl font-semibold mb-4">Moves</h2>
+			<h2 class="sticky top-0 z-10 bg-base-100 py-3 text-2xl font-semibold mb-4">Moves</h2>
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each data.moves as move}
 					<button
